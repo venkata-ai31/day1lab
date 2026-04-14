@@ -36,4 +36,4 @@ jobs:
       run: terraform state list
 
     - name: Terraform Show
-      run: terraform Show
+      run: terraform show
