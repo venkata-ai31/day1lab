@@ -4,7 +4,14 @@
 resource "azurerm_resource_group" "rg" {
   name     = "rg-day2-terraform"
   location = "centralindia"
+
+  tags = {
+  env        = "dev"
+  owner      = "terraform-lab"
+  }
+
 }
+
 
 resource "azurerm_virtual_network" "vnet" {
   name                = "vnet-ha"
