@@ -1,7 +1,7 @@
 # -----------------------------
 # Resource   Group
 # -----------------------------
-resource "azurerm_resource_group" "rg_Day2" {
+resource "azurerm_resource_group" "rg" {
   name     = "rg-day1-terraform"
   location = "centralindia"
 }
