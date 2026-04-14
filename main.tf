@@ -1,5 +1,5 @@
 # -----------------------------
-# Resource   Group3
+# Resource   Group4
 # -----------------------------
 resource "azurerm_resource_group" "rg" {
   name     = "rg-day2-terraform"
