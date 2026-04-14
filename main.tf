@@ -8,6 +8,7 @@ resource "azurerm_resource_group" "rg" {
   tags = {
   env        = "dev"
   owner      = "terraform-lab"
+  test       = "prod"
   }
 
 }
