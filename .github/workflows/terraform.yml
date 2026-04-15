@@ -1,7 +1,7 @@
 name: Terraform Azure CI/CD
 
 on:
- # workfl ow_dispatch:
+ # workfl ow_dispatch1:
   push:
     branches: [ main ]
 
