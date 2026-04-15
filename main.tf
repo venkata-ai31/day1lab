@@ -55,7 +55,7 @@ resource "azurerm_subnet_network_security_group_association" "assoc" {
 }
 
 resource "azurerm_network_interface" "nic" {
-  count               = 2
+  count               = 4
   name                = "nic-linux-${count.index}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
