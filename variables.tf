@@ -1,5 +1,5 @@
 variable "admin_password" {
-  description = "Password for the admin user"
+  description = "Admin password for VM"
   type        = string
   sensitive   = true
 }
