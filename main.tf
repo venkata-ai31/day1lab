@@ -1,5 +1,5 @@
 # -----------------------------
-# Resource   Group1
+# Resource   Group
 # -----------------------------
 resource "azurerm_resource_group" "rg" {
   name     = "rg-day1-terraform"
@@ -19,6 +19,8 @@ resource "azurerm_subnet" "subnet" {
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.1.0/24"]
 }
+
+
 resource "azurerm_network_security_group" "nsg" {
   name                = "linux-ha-nsg"
   location            = azurerm_resource_group.rg.location
@@ -55,7 +57,7 @@ resource "azurerm_subnet_network_security_group_association" "assoc" {
 }
 
 resource "azurerm_network_interface" "nic" {
-  count               = 4
+  count               = 2
   name                = "nic-linux-${count.index}"
   location            = azurerm_resource_group.rg.location
   resource_group_name = azurerm_resource_group.rg.name
@@ -119,6 +121,59 @@ EOF
   }
 }
 
+resource "azurerm_public_ip" "pip" {
+  name                = "lb-public-ip"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  allocation_method   = "Static"
+  sku                 = "Standard"
+}
+
+resource "azurerm_lb" "lb" {
+  name                = "lb-linux-ha"
+  location            = azurerm_resource_group.rg.location
+  resource_group_name = azurerm_resource_group.rg.name
+  sku                 = "Standard"
+
+  frontend_ip_configuration {
+    name                 = "PublicIP"
+    public_ip_address_id = azurerm_public_ip.pip.id
+  }
+}
+
+resource "azurerm_lb_backend_address_pool" "bepool" {
+  loadbalancer_id = azurerm_lb.lb.id
+  name            = "backend-pool"
+}
+
+resource "azurerm_network_interface_backend_address_pool_association" "lb_assoc" {
+  count                   = 2
+  network_interface_id    = azurerm_network_interface.nic[count.index].id
+  ip_configuration_name   = "internal"
+  backend_address_pool_id = azurerm_lb_backend_address_pool.bepool.id
+}
+
+resource "azurerm_lb_probe" "http_probe" {
+  loadbalancer_id = azurerm_lb.lb.id
+  name            = "http-probe"
+  protocol        = "Tcp"
+  port            = 80
+}
+
+resource "azurerm_lb_rule" "http_rule" {
+  loadbalancer_id                = azurerm_lb.lb.id
+  name                           = "http-rule"
+  protocol                       = "Tcp"
+  frontend_port                  = 80
+  backend_port                   = 80
+  frontend_ip_configuration_name = "PublicIP"
+  backend_address_pool_ids       = [azurerm_lb_backend_address_pool.bepool.id]
+  probe_id                       = azurerm_lb_probe.http_probe.id
+}
+
+output "load_balancer_public_ip" {
+  value = azurerm_public_ip.pip.ip_address
+}
 output "vm_private_ips" {
   value = azurerm_network_interface.nic[*].private_ip_address
 }
