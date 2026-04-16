@@ -1,7 +1,15 @@
-name: Terraform PROD Deploy
+name: Terraform Azure - Prod Manual
 
 on:
   workflow_dispatch:
+    inputs:
+      action:
+        description: "Choose Terraform Action"
+        required: true
+        type: choice
+        options:
+          - apply
+          - destroy
 
 jobs:
   terraform:
@@ -14,10 +22,6 @@ jobs:
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
       TF_VAR_admin_password: ${{ secrets.TF_VAR_admin_password }}
 
-    defaults:
-      run:
-        working-directory: envs/prod
-
     steps:
       - uses: actions/checkout@v3
 
@@ -29,8 +33,24 @@ jobs:
       - name: Terraform Validate
         run: terraform validate
 
-      - name: Terraform Plan
+      - name: Terraform Plan (Apply)
+        if: ${{ github.event.inputs.action == 'apply' }}
         run: terraform plan
 
-      - name: Terraform Apply
+      - name: Terraform Apply (Prod)
+        if: ${{ github.event.inputs.action == 'apply' }}
         run: terraform apply -auto-approve
+
+      - name: Terraform Destroy Plan
+        if: ${{ github.event.inputs.action == 'destroy' }}
+        run: terraform plan -destroy
+
+      - name: Terraform Destroy (Prod)
+        if: ${{ github.event.inputs.action == 'destroy' }}
+        run: terraform destroy -auto-approve
+
+      - name: Terraform State List
+        run: terraform state list
+
+      - name: Terraform Show
+        run: terraform show
