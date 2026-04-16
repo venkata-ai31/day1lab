@@ -4,6 +4,6 @@ module "linux_ha" {
   resource_group_name = "rg-prod"
   location            = "eastus"
   environment         = "prod"
-  vm_count            = 2
+  vm_count            = 1
   admin_password      = var.admin_password
 }
