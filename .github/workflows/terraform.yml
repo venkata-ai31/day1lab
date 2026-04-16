@@ -1,16 +1,24 @@
-name: Terraform CI/CD
+name: Terraform CI/CD (Manual Env)
 
 on:
-  push:
-    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Select environment (dev or prod)"
+        required: true
+        default: "dev"
+        type: choice
+        options:
+          - dev
+          - prod
 
 jobs:
-  dev:
+  terraform:
     runs-on: ubuntu-latest
 
     defaults:
       run:
-        working-directory: env/dev
+        working-directory: env/${{ github.event.inputs.environment }}
 
     env:
       ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
@@ -20,9 +28,20 @@ jobs:
       TF_VAR_admin_password: ${{ secrets.TF_VAR_admin_password }}
 
     steps:
-    - uses: actions/checkout@v3
-    - uses: hashicorp/setup-terraform@v2
+    - name: Checkout Code
+      uses: actions/checkout@v3
 
-    - run: terraform init
-    - run: terraform plan
-    - run: terraform apply -auto-approve
+    - name: Setup Terraform
+      uses: hashicorp/setup-terraform@v2
+
+    - name: Terraform Init
+      run: terraform init
+
+    - name: Terraform Validate
+      run: terraform validate
+
+    - name: Terraform Plan
+      run: terraform plan
+
+    - name: Terraform Apply
+      run: terraform apply -auto-approve
