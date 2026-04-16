@@ -1,9 +1,7 @@
-name: Terraform Azure CI/CD
+name: Terraform PROD Deploy
 
 on:
- # workfl ow_dispatch:
-  push:
-    branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   terraform:
@@ -15,28 +13,24 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
       TF_VAR_admin_password: ${{ secrets.TF_VAR_admin_password }}
-      
+
+    defaults:
+      run:
+        working-directory: envs/prod
 
     steps:
-    - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
 
-    - uses: hashicorp/setup-terraform@v2
+      - uses: hashicorp/setup-terraform@v2
 
-    - name: Terraform Init
-      run: terraform init
+      - name: Terraform Init
+        run: terraform init
 
-    - name: Terraform Validate
-      run: terraform validate
+      - name: Terraform Validate
+        run: terraform validate
 
-    - name: Terraform Plan
-      run: terraform plan
+      - name: Terraform Plan
+        run: terraform plan
 
-    - name: Terraform Apply
-      run: terraform apply -auto-approve
-
-
-    - name: Terraform State
-      run: terraform state list
-
-    - name: Terraform Show
-      run: terraform show
+      - name: Terraform Apply
+        run: terraform apply -auto-approve
