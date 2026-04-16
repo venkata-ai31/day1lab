@@ -1,30 +1,26 @@
-# -----------------------------
-# Resource   Group
-# -----------------------------
 resource "azurerm_resource_group" "rg" {
-  name     = "rg-day1-terraform"
-  location = "centralindia"
+  name     = var.resource_group_name
+  location = var.location
 }
 
 resource "azurerm_virtual_network" "vnet" {
-  name                = "vnet-ha"
+  name                = "vnet-${var.environment}"
   address_space       = ["10.0.0.0/16"]
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  location            = var.location
+  resource_group_name = var.resource_group_name
 }
 
 resource "azurerm_subnet" "subnet" {
-  name                 = "public-subnet"
-  resource_group_name  = azurerm_resource_group.rg.name
+  name                 = "subnet-${var.environment}"
+  resource_group_name  = var.resource_group_name
   virtual_network_name = azurerm_virtual_network.vnet.name
   address_prefixes     = ["10.0.1.0/24"]
 }
 
-
 resource "azurerm_network_security_group" "nsg" {
-  name                = "linux-ha-nsg"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  name                = "nsg-${var.environment}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
 
   security_rule {
     name                       = "Allow-HTTP"
@@ -57,10 +53,10 @@ resource "azurerm_subnet_network_security_group_association" "assoc" {
 }
 
 resource "azurerm_network_interface" "nic" {
-  count               = 2
-  name                = "nic-linux-${count.index}"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  count               = var.vm_count
+  name                = "nic-${var.environment}-${count.index}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
 
   ip_configuration {
     name                          = "internal"
@@ -70,19 +66,17 @@ resource "azurerm_network_interface" "nic" {
 }
 
 resource "azurerm_availability_set" "avset" {
-  name                         = "avset-linux-ha"
-  location                     = azurerm_resource_group.rg.location
-  resource_group_name          = azurerm_resource_group.rg.name
-  platform_fault_domain_count  = 2
-  platform_update_domain_count = 2
-  managed                      = true
+  name                = "avset-${var.environment}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
+  managed             = true
 }
 
 resource "azurerm_linux_virtual_machine" "vm" {
-  count               = 2
-  name                = "ubuntu-vm-${count.index}"
-  resource_group_name = azurerm_resource_group.rg.name
-  location            = azurerm_resource_group.rg.location
+  count               = var.vm_count
+  name                = "vm-${var.environment}-${count.index}"
+  resource_group_name = var.resource_group_name
+  location            = var.location
   availability_set_id = azurerm_availability_set.avset.id
 
   size                            = "Standard_D2s_v3"
@@ -98,13 +92,7 @@ resource "azurerm_linux_virtual_machine" "vm" {
 #!/bin/bash
 apt update -y
 apt install apache2 -y
-
-echo "<h1>High Availability Lab</h1>" > /var/www/html/index.html
-echo "<h2>Served from VM ${count.index}</h2>" >> /var/www/html/index.html
-echo "<p>Hostname: $(hostname)</p>" >> /var/www/html/index.html
-
-systemctl enable apache2
-systemctl start apache2
+echo "<h1>${var.environment} environment</h1>" > /var/www/html/index.html
 EOF
   )
 
@@ -122,17 +110,17 @@ EOF
 }
 
 resource "azurerm_public_ip" "pip" {
-  name                = "lb-public-ip"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  name                = "pip-${var.environment}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
   allocation_method   = "Static"
   sku                 = "Standard"
 }
 
 resource "azurerm_lb" "lb" {
-  name                = "lb-linux-ha"
-  location            = azurerm_resource_group.rg.location
-  resource_group_name = azurerm_resource_group.rg.name
+  name                = "lb-${var.environment}"
+  location            = var.location
+  resource_group_name = var.resource_group_name
   sku                 = "Standard"
 
   frontend_ip_configuration {
@@ -143,37 +131,30 @@ resource "azurerm_lb" "lb" {
 
 resource "azurerm_lb_backend_address_pool" "bepool" {
   loadbalancer_id = azurerm_lb.lb.id
-  name            = "backend-pool"
+  name            = "backend-${var.environment}"
 }
 
-resource "azurerm_network_interface_backend_address_pool_association" "lb_assoc" {
-  count                   = 2
+resource "azurerm_network_interface_backend_address_pool_association" "assoc" {
+  count                   = var.vm_count
   network_interface_id    = azurerm_network_interface.nic[count.index].id
   ip_configuration_name   = "internal"
   backend_address_pool_id = azurerm_lb_backend_address_pool.bepool.id
 }
 
-resource "azurerm_lb_probe" "http_probe" {
+resource "azurerm_lb_probe" "probe" {
   loadbalancer_id = azurerm_lb.lb.id
-  name            = "http-probe"
+  name            = "probe-${var.environment}"
   protocol        = "Tcp"
   port            = 80
 }
 
-resource "azurerm_lb_rule" "http_rule" {
+resource "azurerm_lb_rule" "rule" {
   loadbalancer_id                = azurerm_lb.lb.id
-  name                           = "http-rule"
+  name                           = "rule-${var.environment}"
   protocol                       = "Tcp"
   frontend_port                  = 80
   backend_port                   = 80
   frontend_ip_configuration_name = "PublicIP"
   backend_address_pool_ids       = [azurerm_lb_backend_address_pool.bepool.id]
-  probe_id                       = azurerm_lb_probe.http_probe.id
-}
-
-output "load_balancer_public_ip" {
-  value = azurerm_public_ip.pip.ip_address
-}
-output "vm_private_ips" {
-  value = azurerm_network_interface.nic[*].private_ip_address
+  probe_id                       = azurerm_lb_probe.probe.id
 }

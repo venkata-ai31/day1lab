@@ -1,13 +1,16 @@
-name: Terraform Azure CI/CD
+name: Terraform CI/CD
 
 on:
- # workfl ow_dispatch:
   push:
     branches: [ main ]
 
 jobs:
-  terraform:
+  dev:
     runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: env/dev
 
     env:
       ARM_CLIENT_ID: ${{ secrets.ARM_CLIENT_ID }}
@@ -15,28 +18,11 @@ jobs:
       ARM_SUBSCRIPTION_ID: ${{ secrets.ARM_SUBSCRIPTION_ID }}
       ARM_TENANT_ID: ${{ secrets.ARM_TENANT_ID }}
       TF_VAR_admin_password: ${{ secrets.TF_VAR_admin_password }}
-      
 
     steps:
     - uses: actions/checkout@v3
-
     - uses: hashicorp/setup-terraform@v2
 
-    - name: Terraform Init
-      run: terraform init
-
-    - name: Terraform Validate
-      run: terraform validate
-
-    - name: Terraform Plan
-      run: terraform plan
-
-    - name: Terraform Apply
-      run: terraform apply -auto-approve
-
-
-    - name: Terraform State
-      run: terraform state list
-
-    - name: Terraform Show
-      run: terraform show
+    - run: terraform init
+    - run: terraform plan
+    - run: terraform apply -auto-approve
